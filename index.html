@@ -1,0 +1,1820 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ArchiNote : Le rapport de chantier, repensé pour les architectes</title>
+<meta name="description" content="ArchiNote automatise la rédaction de vos rapports de chantier et PV de réception. Une application pensée par et pour les architectes indépendants et bureaux d'architectes.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#F4F0E8;
+    --paper-2:#EDE6D6;
+    --ink:#0F1B30;
+    --ink-2:#1A2B4A;
+    --ink-3:#3A4D6F;
+    --rule:#1A2B4A22;
+    --rule-strong:#1A2B4A;
+    --blue:#5C8EC9;
+    --blue-deep:#2C3E7B;
+    --amber:#E8A745;
+    --amber-deep:#C97E1D;
+    --grid:#1A2B4A0E;
+    --maxw:1320px;
+    --gutter:clamp(20px, 4vw, 48px);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+  body{
+    font-family:'Instrument Sans', sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    font-size:16px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--amber);color:var(--ink)}
+
+  /* Paper texture overlay (very subtle grain) */
+  body::before{
+    content:"";
+    position:fixed;inset:0;
+    pointer-events:none;
+    z-index:1;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06  0 0 0 0 0.10  0 0 0 0 0.18  0 0 0 0.04 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    opacity:.55;
+    mix-blend-mode:multiply;
+  }
+
+  /* —— Persistent blueprint corner ticks (decorative) —— */
+  .corner{
+    position:fixed;
+    z-index:5;
+    width:34px;height:34px;
+    pointer-events:none;
+    color:var(--ink-2);
+  }
+  .corner.tl{top:14px;left:14px;border-top:1px solid;border-left:1px solid}
+  .corner.tr{top:14px;right:14px;border-top:1px solid;border-right:1px solid}
+  .corner.bl{bottom:14px;left:14px;border-bottom:1px solid;border-left:1px solid}
+  .corner.br{bottom:14px;right:14px;border-bottom:1px solid;border-right:1px solid}
+
+  a{color:inherit;text-decoration:none}
+  img,svg{display:block;max-width:100%}
+  button{font:inherit;cursor:pointer;border:0;background:0}
+
+  .container{
+    max-width:var(--maxw);
+    margin:0 auto;
+    padding:0 var(--gutter);
+    position:relative;
+    z-index:2;
+  }
+
+  /* —— Type system —— */
+  .mono{font-family:'JetBrains Mono', monospace;font-weight:400;letter-spacing:.04em;text-transform:uppercase;font-size:11.5px}
+  .serif{font-family:'Fraunces', serif;font-variation-settings:"opsz" 144,"SOFT" 30,"WONK" 0}
+  .italic{font-style:italic}
+  .display{
+    font-family:'Fraunces', serif;
+    font-variation-settings:"opsz" 144,"SOFT" 50,"WONK" 0;
+    font-weight:340;
+    line-height:.95;
+    letter-spacing:-.02em;
+    color:var(--ink);
+  }
+  .h-eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--ink-2);
+  }
+
+  /* —— Buttons —— */
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;
+    padding:14px 22px;
+    border-radius:999px;
+    font-weight:500;
+    font-size:14.5px;
+    letter-spacing:.005em;
+    transition:transform .25s ease, box-shadow .25s ease, background .25s ease, color .25s ease;
+    border:1px solid transparent;
+    white-space:nowrap;
+  }
+  .btn-primary{
+    background:var(--ink);
+    color:var(--paper);
+  }
+  .btn-primary:hover{
+    background:var(--amber);
+    color:var(--ink);
+    transform:translateY(-2px);
+    box-shadow:0 12px 30px -10px rgba(232,167,69,.55);
+  }
+  .btn-ghost{
+    background:transparent;
+    color:var(--ink);
+    border-color:var(--ink-2);
+  }
+  .btn-ghost:hover{
+    background:var(--ink);
+    color:var(--paper);
+    transform:translateY(-2px);
+  }
+  .btn .arr{transition:transform .25s ease}
+  .btn:hover .arr{transform:translate(3px,-3px)}
+
+  /* ============================================================
+     NAV
+     ============================================================ */
+  nav.top{
+    position:sticky;top:0;z-index:20;
+    backdrop-filter:saturate(140%) blur(12px);
+    -webkit-backdrop-filter:saturate(140%) blur(12px);
+    background:rgba(244,240,232,.78);
+    border-bottom:1px solid var(--rule);
+  }
+  nav.top .row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 0;
+  }
+  .brand{
+    display:inline-flex;align-items:flex-end;gap:0;
+    font-family:'Fraunces', serif;
+    font-variation-settings:"opsz" 144,"SOFT" 50;
+    font-size:24px;
+    line-height:1;
+    color:var(--ink);
+    position:relative;
+    padding-right:4px;
+  }
+  .brand .pt1{font-weight:700}
+  .brand .pt2{font-weight:300;color:var(--blue-deep);letter-spacing:.005em;margin-left:2px}
+  .brand::after{
+    content:"";
+    position:absolute;
+    bottom:-3px;left:54%;
+    width:14px;height:3px;
+    background:var(--amber);
+    border-radius:2px;
+  }
+  .nav-links{display:flex;gap:30px;align-items:center}
+  .nav-links a{
+    font-size:14px;color:var(--ink-2);
+    position:relative;padding:6px 0;
+  }
+  .nav-links a::after{
+    content:"";position:absolute;left:0;bottom:0;
+    height:1px;width:0;background:var(--amber);
+    transition:width .25s ease;
+  }
+  .nav-links a:hover::after{width:100%}
+
+  .nav-cta{display:flex;align-items:center;gap:14px}
+  .nav-cta .login{font-size:14px;color:var(--ink-2)}
+  .nav-cta .login:hover{color:var(--ink)}
+
+  @media (max-width:880px){
+    .nav-links{display:none}
+    .nav-cta .login{display:none}
+  }
+
+  /* ============================================================
+     HERO
+     ============================================================ */
+  .hero{
+    position:relative;
+    padding:clamp(48px,8vw,110px) 0 clamp(60px, 8vw, 110px);
+    overflow:hidden;
+  }
+  .hero .grid-bg{
+    position:absolute;inset:0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size:64px 64px;
+    mask-image:radial-gradient(ellipse 80% 80% at 50% 50%, #000 35%, transparent 90%);
+    -webkit-mask-image:radial-gradient(ellipse 80% 80% at 50% 50%, #000 35%, transparent 90%);
+    pointer-events:none;
+    opacity:.7;
+  }
+  .hero-grid{
+    display:grid;
+    grid-template-columns:1.1fr .9fr;
+    gap:clamp(24px, 4vw, 64px);
+    align-items:center;
+    position:relative;
+  }
+  @media (max-width:980px){
+    .hero-grid{grid-template-columns:1fr;gap:60px}
+  }
+
+  .hero-eyebrow{
+    display:inline-flex;align-items:center;gap:10px;
+    margin-bottom:28px;
+    padding:7px 14px 7px 10px;
+    border:1px solid var(--rule);
+    border-radius:999px;
+    background:rgba(255,255,255,.45);
+  }
+  .hero-eyebrow .dot{
+    width:7px;height:7px;border-radius:999px;background:var(--amber);
+    box-shadow:0 0 0 3px rgba(232,167,69,.25);
+  }
+  .hero-eyebrow span{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
+
+  .hero h1.display{
+    font-size:clamp(42px, 6.6vw, 96px);
+    margin-bottom:28px;
+  }
+  .hero h1 .em{
+    font-style:italic;
+    font-weight:380;
+    color:var(--blue-deep);
+    position:relative;
+    display:inline-block;
+  }
+  .hero h1 .em::after{
+    content:"";
+    position:absolute;left:0;right:0;bottom:.05em;
+    height:8px;
+    background:var(--amber);
+    opacity:.85;
+    z-index:-1;
+    border-radius:2px;
+  }
+  .hero p.lead{
+    font-size:clamp(16px, 1.4vw, 19px);
+    line-height:1.55;
+    color:var(--ink-2);
+    max-width:520px;
+    margin-bottom:36px;
+  }
+  .hero-cta{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  .hero-meta{
+    margin-top:42px;
+    display:flex;gap:36px;align-items:center;flex-wrap:wrap;
+    padding-top:24px;
+    border-top:1px solid var(--rule);
+  }
+  .hero-meta .item{display:flex;flex-direction:column;gap:4px}
+  .hero-meta .num{font-family:'Fraunces',serif;font-weight:500;font-size:30px;line-height:1;color:var(--ink)}
+  .hero-meta .lbl{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+
+  /* —— Phone mockup —— */
+  .phone-stage{
+    position:relative;
+    display:flex;justify-content:center;align-items:center;
+    min-height:560px;
+  }
+  .phone-stage .annot{
+    position:absolute;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:.13em;
+    text-transform:uppercase;
+    color:var(--ink-3);
+    display:flex;align-items:center;gap:10px;
+    pointer-events:none;
+  }
+  .phone-stage .annot::before{content:"";display:inline-block;width:36px;height:1px;background:var(--ink-3)}
+  .phone-stage .annot.right{flex-direction:row-reverse}
+  .phone-stage .annot.right::before{display:none}
+  .phone-stage .annot.right::after{content:"";display:inline-block;width:36px;height:1px;background:var(--ink-3)}
+  .annot.a1{top:6%;left:-4%}
+  .annot.a2{top:30%;right:-2%}
+  .annot.a3{bottom:14%;left:-2%}
+
+  .phone{
+    width:300px;
+    height:610px;
+    background:#0F1B30;
+    border-radius:46px;
+    padding:14px;
+    position:relative;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.04) inset,
+      0 30px 60px -20px rgba(15,27,48,.45),
+      0 60px 100px -40px rgba(15,27,48,.35);
+    transform:rotate(-2deg);
+    animation:float 9s ease-in-out infinite;
+  }
+  @keyframes float{
+    0%,100%{transform:rotate(-2deg) translateY(0)}
+    50%{transform:rotate(-2deg) translateY(-10px)}
+  }
+  .phone::before{
+    content:"";position:absolute;top:18px;left:50%;transform:translateX(-50%);
+    width:90px;height:24px;background:#0F1B30;border-radius:14px;z-index:3;
+  }
+  .phone-screen{
+    width:100%;height:100%;
+    background:var(--paper);
+    border-radius:34px;
+    overflow:hidden;
+    position:relative;
+    display:flex;flex-direction:column;
+  }
+  .ph-status{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:14px 22px 8px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;color:var(--ink);
+  }
+  .ph-status .right{display:flex;gap:6px;align-items:center}
+  .ph-status .bar{width:14px;height:8px;border:1px solid var(--ink);border-radius:2px;position:relative}
+  .ph-status .bar::after{content:"";position:absolute;left:1px;top:1px;bottom:1px;width:9px;background:var(--ink)}
+  .ph-app{flex:1;padding:14px 18px 18px;overflow:hidden;position:relative}
+  .ph-head{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+  .ph-head .back{
+    width:30px;height:30px;border-radius:999px;border:1px solid var(--rule-strong);
+    display:grid;place-items:center;color:var(--ink);font-size:13px;
+  }
+  .ph-head .menu{display:flex;flex-direction:column;gap:3px}
+  .ph-head .menu span{width:18px;height:1.5px;background:var(--ink)}
+  .ph-eyebrow{
+    margin-top:18px;
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+  }
+  .ph-title{
+    font-family:'Fraunces',serif;font-weight:400;
+    font-size:22px;line-height:1.1;color:var(--ink);
+    margin-top:6px;
+    letter-spacing:-.01em;
+  }
+  .ph-sub{font-size:12px;color:var(--ink-3);margin-top:6px}
+
+  .ph-card{
+    margin-top:14px;
+    background:#fff;
+    border:1px solid var(--rule);
+    border-radius:14px;
+    padding:12px;
+  }
+  .ph-card .lbl{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .ph-card .lbl .l{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+  .ph-card .lbl .r{font-size:10px;color:var(--blue-deep);font-weight:500}
+  .ph-card .row{display:flex;gap:8px}
+  .ph-card .thumb{
+    flex:1;height:60px;border-radius:8px;
+    background:linear-gradient(135deg,#cdd6e4 0%,#a3b1c6 100%);
+    position:relative;overflow:hidden;
+  }
+  .ph-card .thumb:nth-child(1){background:linear-gradient(135deg,#7d92b0 0%,#3a4d6f 100%)}
+  .ph-card .thumb:nth-child(2){background:linear-gradient(135deg,#c8a47a 0%,#8a6a47 100%)}
+  .ph-card .thumb:nth-child(3){background:linear-gradient(135deg,#5c8ec9 0%,#2c3e7b 100%)}
+  .ph-card .thumb::after{
+    content:"";position:absolute;inset:8px;border:1px solid rgba(255,255,255,.25);border-radius:4px;
+  }
+
+  .ph-voice{
+    margin-top:10px;
+    background:linear-gradient(180deg,#fff 0%,#FBF6EB 100%);
+    border:1px solid var(--rule);
+    border-radius:14px;
+    padding:12px;
+    display:flex;flex-direction:column;gap:9px;
+  }
+  .ph-voice .h{display:flex;align-items:center;gap:8px}
+  .ph-voice .ai{
+    width:24px;height:24px;border-radius:7px;
+    background:var(--ink);
+    color:var(--amber);
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    display:grid;place-items:center;
+  }
+  .ph-voice .h .t{font-size:11px;font-weight:600;color:var(--ink)}
+  .ph-voice .h .badge{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--amber-deep);letter-spacing:.1em;text-transform:uppercase}
+  .ph-voice .wave{display:flex;align-items:flex-end;gap:3px;height:24px}
+  .ph-voice .wave span{flex:1;background:var(--blue-deep);border-radius:2px;animation:bar 1.4s ease-in-out infinite}
+  .ph-voice .wave span:nth-child(1){animation-delay:0s;height:30%}
+  .ph-voice .wave span:nth-child(2){animation-delay:.1s;height:60%}
+  .ph-voice .wave span:nth-child(3){animation-delay:.2s;height:90%}
+  .ph-voice .wave span:nth-child(4){animation-delay:.3s;height:50%}
+  .ph-voice .wave span:nth-child(5){animation-delay:.4s;height:70%}
+  .ph-voice .wave span:nth-child(6){animation-delay:.5s;height:40%}
+  .ph-voice .wave span:nth-child(7){animation-delay:.6s;height:80%}
+  .ph-voice .wave span:nth-child(8){animation-delay:.7s;height:55%}
+  .ph-voice .wave span:nth-child(9){animation-delay:.8s;height:35%}
+  .ph-voice .wave span:nth-child(10){animation-delay:.9s;height:65%}
+  .ph-voice .wave span:nth-child(11){animation-delay:1s;height:45%}
+  .ph-voice .wave span:nth-child(12){animation-delay:1.1s;height:75%}
+  @keyframes bar{0%,100%{transform:scaleY(.6)}50%{transform:scaleY(1)}}
+  .ph-voice .quote{
+    font-family:'Fraunces',serif;font-weight:400;font-style:italic;
+    font-size:12px;line-height:1.4;color:var(--ink-2);
+    border-left:2px solid var(--amber);padding-left:8px;
+  }
+
+  .ph-foot{
+    margin-top:14px;
+    display:flex;gap:8px;align-items:center;justify-content:space-between;
+    background:var(--ink);
+    color:var(--paper);
+    border-radius:14px;padding:11px 14px;
+  }
+  .ph-foot .l{font-size:11.5px;font-weight:500;display:flex;flex-direction:column;gap:2px}
+  .ph-foot .l small{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber)}
+  .ph-foot .gen{
+    background:var(--amber);color:var(--ink);
+    border-radius:999px;padding:7px 12px;font-size:11px;font-weight:600;
+    display:inline-flex;align-items:center;gap:5px;
+  }
+
+  /* —— Hero scroll cue —— */
+  .hero-cue{
+    position:absolute;bottom:-22px;left:0;right:0;
+    display:flex;align-items:center;gap:14px;
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);
+  }
+  .hero-cue .l{flex:1;height:1px;background:var(--rule)}
+
+  /* ============================================================
+     MARQUEE / Trust band
+     ============================================================ */
+  .strip{
+    border-top:1px solid var(--rule);
+    border-bottom:1px solid var(--rule);
+    padding:22px 0;
+    overflow:hidden;
+    background:rgba(255,255,255,.3);
+    position:relative;z-index:2;
+  }
+  .strip-inner{
+    display:flex;gap:60px;
+    animation:slide 38s linear infinite;
+    width:max-content;
+    align-items:center;
+    color:var(--ink-2);
+  }
+  .strip-inner span{
+    font-family:'Fraunces',serif;font-weight:400;font-style:italic;
+    font-size:18px;letter-spacing:-.005em;display:inline-flex;align-items:center;gap:60px;
+  }
+  .strip-inner span::after{content:"·";font-family:'JetBrains Mono',monospace;font-style:normal;color:var(--amber);font-size:18px}
+  @keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  /* ============================================================
+     SECTION FRAME
+     ============================================================ */
+  section.block{padding:clamp(80px, 10vw, 140px) 0;position:relative}
+  .sec-head{
+    display:grid;grid-template-columns:1fr 2fr;gap:clamp(24px,4vw,64px);
+    align-items:end;
+    margin-bottom:64px;
+    padding-bottom:24px;
+    border-bottom:1px solid var(--rule);
+  }
+  @media(max-width:880px){.sec-head{grid-template-columns:1fr;align-items:start;gap:18px}}
+  .sec-num{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-2);
+    display:flex;align-items:center;gap:10px;
+  }
+  .sec-num::before{content:"";width:30px;height:1px;background:var(--ink-2)}
+  .sec-h{
+    font-family:'Fraunces',serif;
+    font-variation-settings:"opsz" 144,"SOFT" 40;
+    font-weight:340;
+    font-size:clamp(34px, 4.6vw, 60px);
+    line-height:1.02;
+    letter-spacing:-.018em;
+    color:var(--ink);
+  }
+  .sec-h .em{font-style:italic;color:var(--blue-deep);font-weight:380}
+  .sec-h .acc{
+    position:relative;display:inline-block;
+  }
+  .sec-h .acc::after{
+    content:"";position:absolute;left:0;right:0;bottom:.05em;height:6px;background:var(--amber);opacity:.85;z-index:-1;border-radius:2px;
+  }
+  .sec-intro{font-size:16.5px;color:var(--ink-2);max-width:560px;margin-top:18px}
+
+  /* ============================================================
+     SECTION 02 — POURQUOI CHANGER
+     ============================================================ */
+  .why-grid{
+    display:grid;grid-template-columns:repeat(4, 1fr);
+    border-top:1px solid var(--rule-strong);
+    border-left:1px solid var(--rule-strong);
+  }
+  @media(max-width:980px){.why-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.why-grid{grid-template-columns:1fr}}
+  .why{
+    border-right:1px solid var(--rule-strong);
+    border-bottom:1px solid var(--rule-strong);
+    padding:28px 26px 32px;
+    background:transparent;
+    transition:background .35s ease;
+    display:flex;flex-direction:column;gap:18px;
+    min-height:300px;
+    position:relative;
+  }
+  .why:hover{background:rgba(232,167,69,.07)}
+  .why .n{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .why .n .resolved{color:var(--amber-deep);font-weight:600}
+  .why h3{
+    font-family:'Fraunces',serif;font-weight:380;
+    font-size:22px;line-height:1.15;color:var(--ink);
+    letter-spacing:-.01em;
+  }
+  .why p{font-size:14px;line-height:1.55;color:var(--ink-2);margin-top:auto}
+  .why .ico{
+    width:40px;height:40px;border-radius:10px;
+    background:var(--ink);color:var(--amber);
+    display:grid;place-items:center;
+    font-family:'Fraunces',serif;font-style:italic;font-size:18px;font-weight:500;
+  }
+
+  /* ============================================================
+     SECTION 03 — FEATURES
+     ============================================================ */
+  .feat-grid{
+    display:grid;grid-template-columns:repeat(12,1fr);gap:20px;
+  }
+  .feat{
+    background:#fff;
+    border:1px solid var(--rule);
+    border-radius:18px;
+    padding:28px;
+    display:flex;flex-direction:column;gap:18px;
+    position:relative;overflow:hidden;
+    transition:transform .35s ease, box-shadow .35s ease, border-color .35s ease;
+  }
+  .feat:hover{transform:translateY(-4px);box-shadow:0 18px 40px -22px rgba(15,27,48,.25);border-color:var(--ink-2)}
+  .feat .lbl{display:flex;justify-content:space-between;align-items:center}
+  .feat .lbl .num{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;color:var(--ink-3)}
+  .feat .lbl .tag{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--blue-deep);letter-spacing:.14em;text-transform:uppercase}
+  .feat h3{
+    font-family:'Fraunces',serif;font-weight:380;
+    font-size:26px;line-height:1.1;color:var(--ink);
+    letter-spacing:-.012em;
+  }
+  .feat p{font-size:14.5px;color:var(--ink-2);line-height:1.55}
+  .feat .vis{
+    margin-top:6px;
+    border-top:1px dashed var(--rule);
+    padding-top:18px;
+  }
+  .feat-1{grid-column:span 5}
+  .feat-2{grid-column:span 7}
+  .feat-3{grid-column:span 4}
+  .feat-4{grid-column:span 4}
+  .feat-5{grid-column:span 4}
+  @media(max-width:980px){
+    .feat-1,.feat-2,.feat-3,.feat-4,.feat-5{grid-column:span 12}
+  }
+
+  /* feat 1 — chantiers list visual */
+  .vis-list{display:flex;flex-direction:column;gap:8px}
+  .vis-list .it{
+    display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;
+    padding:10px 12px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);
+  }
+  .vis-list .it .pin{width:8px;height:8px;border-radius:999px;background:var(--amber)}
+  .vis-list .it.ok .pin{background:var(--blue-deep)}
+  .vis-list .it.archive .pin{background:transparent;border:1px solid var(--ink-3)}
+  .vis-list .it .nm{font-size:13px;font-weight:500;color:var(--ink)}
+  .vis-list .it .nm small{display:block;font-weight:400;color:var(--ink-3);font-size:11.5px;margin-top:2px}
+  .vis-list .it .st{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+
+  /* feat 2 — capture grid */
+  .vis-cap{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .vis-cap .ph2{
+    aspect-ratio:1/1;border-radius:10px;position:relative;overflow:hidden;
+    background:linear-gradient(135deg,#7d92b0,#3a4d6f);
+  }
+  .vis-cap .ph2:nth-child(2){background:linear-gradient(135deg,#cda47a,#8a6a47)}
+  .vis-cap .ph2:nth-child(3){background:linear-gradient(135deg,#a3b8d2,#5c8ec9)}
+  .vis-cap .ph2:nth-child(4){background:linear-gradient(135deg,#d8c9a5,#a08762)}
+  .vis-cap .ph2:nth-child(5){background:linear-gradient(135deg,#7e93b3,#2c3e7b)}
+  .vis-cap .ph2:nth-child(6){background:linear-gradient(135deg,#b39060,#7a5a30)}
+  .vis-cap .ph2 .badge{
+    position:absolute;left:8px;bottom:8px;
+    background:rgba(15,27,48,.85);color:var(--paper);
+    font-family:'JetBrains Mono',monospace;font-size:9px;
+    letter-spacing:.12em;text-transform:uppercase;
+    padding:3px 6px;border-radius:4px;
+  }
+
+  /* feat 3 — IA */
+  .vis-ai{
+    display:flex;flex-direction:column;gap:8px;
+    background:var(--ink);border-radius:12px;padding:14px;color:var(--paper);
+  }
+  .vis-ai .head{display:flex;align-items:center;gap:8px}
+  .vis-ai .head .ai{
+    width:22px;height:22px;background:var(--amber);color:var(--ink);
+    border-radius:6px;display:grid;place-items:center;
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  }
+  .vis-ai .head span{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--amber)}
+  .vis-ai .l{display:flex;align-items:center;gap:8px;font-size:11.5px;opacity:.85}
+  .vis-ai .l::before{content:"";width:6px;height:6px;border-radius:999px;background:var(--blue);flex-shrink:0}
+  .vis-ai .out{
+    font-family:'Fraunces',serif;font-weight:400;font-size:13px;line-height:1.4;
+    border-left:2px solid var(--amber);padding-left:8px;
+    margin-top:4px;font-style:italic;
+  }
+
+  /* feat 4 — rapport */
+  .vis-doc{
+    aspect-ratio:5/4;background:var(--paper);border:1px solid var(--rule);border-radius:8px;
+    padding:14px;display:flex;flex-direction:column;gap:6px;position:relative;
+  }
+  .vis-doc::before{content:"PDF";position:absolute;top:8px;right:10px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--amber-deep);letter-spacing:.12em}
+  .vis-doc h5{font-family:'Fraunces',serif;font-weight:500;font-size:11.5px;color:var(--ink);line-height:1.1}
+  .vis-doc .l{height:3px;background:var(--rule);border-radius:2px;width:100%}
+  .vis-doc .l.s{width:60%}
+  .vis-doc .l.m{width:80%}
+  .vis-doc .h{height:6px;background:var(--ink-2);border-radius:2px;width:30%;margin-top:6px}
+
+  /* feat 5 — export */
+  .vis-share{display:flex;flex-direction:column;gap:8px}
+  .vis-share .it{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 12px;border:1px solid var(--rule);border-radius:10px;background:var(--paper);
+    font-size:13px;color:var(--ink);
+  }
+  .vis-share .it .icn{
+    width:28px;height:28px;border-radius:7px;background:var(--ink);color:var(--amber);
+    display:grid;place-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+  }
+  .vis-share .it .arr{margin-left:auto;color:var(--ink-3);font-family:'JetBrains Mono',monospace;font-size:11px}
+
+  /* ============================================================
+     SECTION 04 — WORKFLOW
+     ============================================================ */
+  .flow{
+    position:relative;
+    display:grid;grid-template-columns:repeat(5,1fr);
+    gap:0;
+    border:1px solid var(--rule-strong);
+    border-radius:20px;
+    overflow:hidden;
+    background:#fff;
+  }
+  @media(max-width:880px){.flow{grid-template-columns:1fr}}
+  .step{
+    padding:36px 26px;
+    border-right:1px solid var(--rule);
+    display:flex;flex-direction:column;gap:14px;
+    position:relative;
+    transition:background .35s ease;
+  }
+  @media(max-width:880px){
+    .step{border-right:none;border-bottom:1px solid var(--rule)}
+    .step:last-child{border-bottom:none}
+  }
+  .step:last-child{border-right:none}
+  .step:hover{background:#FAF6EC}
+  .step .stnum{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;color:var(--ink-3);
+  }
+  .step .ico{
+    width:46px;height:46px;border-radius:12px;
+    border:1px solid var(--ink-2);
+    display:grid;place-items:center;
+    font-family:'Fraunces',serif;font-style:italic;font-weight:500;font-size:20px;color:var(--ink);
+    background:var(--paper);
+  }
+  .step h4{
+    font-family:'Fraunces',serif;font-weight:400;font-size:20px;line-height:1.15;color:var(--ink);letter-spacing:-.01em;
+  }
+  .step p{font-size:13.5px;color:var(--ink-2);line-height:1.5}
+  .step .arr{
+    position:absolute;right:-12px;top:60px;
+    width:24px;height:24px;border-radius:999px;background:var(--amber);
+    display:grid;place-items:center;color:var(--ink);font-size:11px;
+    z-index:2;
+  }
+  .step:last-child .arr{display:none}
+  @media(max-width:880px){.step .arr{display:none}}
+
+  /* ============================================================
+     SECTION 05 — ROI
+     ============================================================ */
+  .roi-wrap{
+    background:var(--ink);
+    color:var(--paper);
+    border-radius:24px;
+    padding:clamp(40px,5vw,70px);
+    position:relative;
+    overflow:hidden;
+  }
+  .roi-wrap::before{
+    content:"";position:absolute;inset:0;
+    background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);
+    background-size:48px 48px;
+    mask-image:radial-gradient(ellipse 70% 70% at 80% 30%, #000 30%, transparent 75%);
+    pointer-events:none;
+  }
+  .roi-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:50px;align-items:center;position:relative;z-index:2}
+  @media(max-width:880px){.roi-grid{grid-template-columns:1fr}}
+  .roi-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);margin-bottom:18px}
+  .roi-h{
+    font-family:'Fraunces',serif;font-weight:340;
+    font-size:clamp(34px,4.6vw,58px);line-height:1.02;color:var(--paper);
+    letter-spacing:-.018em;
+  }
+  .roi-h .em{font-style:italic;color:var(--amber);font-weight:380}
+  .roi-p{margin-top:22px;font-size:16px;line-height:1.55;color:#CFD7E7;max-width:480px}
+  .roi-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:#ffffff15;border-radius:14px;overflow:hidden}
+  .roi-stat{
+    background:#172742;
+    padding:24px 22px;
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .roi-stat .v{
+    font-family:'Fraunces',serif;font-weight:500;font-size:48px;line-height:1;color:var(--paper);
+    letter-spacing:-.02em;
+  }
+  .roi-stat .v .u{font-size:18px;color:var(--amber);margin-left:4px;font-weight:400;font-style:italic}
+  .roi-stat .l{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:#9DB1D2}
+  .roi-stat.hl{background:linear-gradient(135deg,#1F3357 0%,#243d68 100%);position:relative}
+  .roi-stat.hl::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--amber)}
+
+  .roi-foot{
+    margin-top:26px;
+    padding-top:22px;border-top:1px solid #ffffff14;
+    display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:#9DB1D2;
+  }
+
+  /* ============================================================
+     SECTION 06 — COMPARAISON
+     ============================================================ */
+  .cmp{
+    border:1px solid var(--rule-strong);
+    border-radius:18px;overflow:hidden;
+    background:#fff;
+  }
+  .cmp table{width:100%;border-collapse:collapse}
+  .cmp th, .cmp td{
+    text-align:left;padding:18px 20px;
+    border-bottom:1px solid var(--rule);
+    vertical-align:middle;
+    font-size:14px;color:var(--ink-2);
+  }
+  .cmp tr:last-child td{border-bottom:none}
+  .cmp thead th{
+    background:var(--paper-2);
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--ink-2);font-weight:500;
+    border-bottom:1px solid var(--rule-strong);
+  }
+  .cmp thead th.us{
+    background:var(--ink);color:var(--amber);
+  }
+  .cmp tbody th{
+    font-family:'Fraunces',serif;font-weight:400;font-size:15.5px;color:var(--ink);
+    background:var(--paper);width:24%;
+  }
+  .cmp td.us{
+    background:#FBF6EB;
+    color:var(--ink);font-weight:500;
+    border-left:1px solid var(--rule);border-right:1px solid var(--rule);
+    position:relative;
+  }
+  .cmp td.us::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--amber);
+  }
+  @media(max-width:780px){
+    .cmp th, .cmp td{padding:14px 14px;font-size:13px}
+    .cmp tbody th{font-size:14px}
+  }
+
+  .cmp-foot{
+    margin-top:18px;
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+  }
+
+  /* ============================================================
+     SECTION 07 — TESTIMONIALS
+     ============================================================ */
+  .quotes{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+  @media(max-width:880px){.quotes{grid-template-columns:1fr}}
+  .q{
+    background:#fff;border:1px solid var(--rule);border-radius:18px;
+    padding:28px;
+    display:flex;flex-direction:column;gap:22px;
+    position:relative;
+  }
+  .q .mk{
+    font-family:'Fraunces',serif;font-weight:500;font-style:italic;font-size:64px;line-height:.6;color:var(--amber);
+    height:24px;
+  }
+  .q blockquote{
+    font-family:'Fraunces',serif;font-weight:400;font-size:18px;line-height:1.4;color:var(--ink);
+    letter-spacing:-.005em;
+  }
+  .q .who{display:flex;align-items:center;gap:12px;margin-top:auto;padding-top:16px;border-top:1px solid var(--rule)}
+  .q .av{
+    width:42px;height:42px;border-radius:999px;background:var(--ink-2);color:var(--paper);
+    display:grid;place-items:center;font-family:'Fraunces',serif;font-weight:500;font-size:16px;
+  }
+  .q .who .nm{font-size:14px;font-weight:600;color:var(--ink)}
+  .q .who .ttl{font-size:12.5px;color:var(--ink-3);margin-top:1px}
+
+  /* ============================================================
+     SECTION 08 — PRICING
+     ============================================================ */
+  .price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:stretch}
+  @media(max-width:980px){.price-grid{grid-template-columns:1fr}}
+  .price{
+    background:#fff;border:1px solid var(--rule);border-radius:22px;
+    padding:34px 30px 32px;
+    display:flex;flex-direction:column;gap:20px;
+    transition:transform .35s ease, box-shadow .35s ease, border-color .35s ease;
+    position:relative;
+  }
+  .price:hover{transform:translateY(-4px);box-shadow:0 22px 50px -28px rgba(15,27,48,.3);border-color:var(--ink-2)}
+  .price .hd{display:flex;justify-content:space-between;align-items:flex-start}
+  .price .hd .nm{
+    font-family:'Fraunces',serif;font-weight:500;font-size:24px;color:var(--ink);
+    letter-spacing:-.01em;
+  }
+  .price .hd .nm small{display:block;font-family:'JetBrains Mono',monospace;font-weight:400;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-top:6px}
+  .price .pill{
+    font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+    padding:5px 9px;border-radius:999px;background:var(--paper-2);color:var(--ink-2);
+  }
+  .price .pr{display:flex;align-items:flex-end;gap:6px;padding-bottom:18px;border-bottom:1px solid var(--rule)}
+  .price .pr .v{font-family:'Fraunces',serif;font-weight:500;font-size:62px;line-height:.95;color:var(--ink);letter-spacing:-.02em}
+  .price .pr .u{font-size:13px;color:var(--ink-3);padding-bottom:10px}
+  .price ul{list-style:none;display:flex;flex-direction:column;gap:11px}
+  .price li{
+    display:flex;align-items:flex-start;gap:10px;
+    font-size:14px;color:var(--ink-2);line-height:1.45;
+  }
+  .price li::before{
+    content:"";flex-shrink:0;
+    margin-top:6px;
+    width:14px;height:8px;border-left:2px solid var(--amber-deep);border-bottom:2px solid var(--amber-deep);
+    transform:rotate(-45deg) translateY(-3px);
+  }
+  .price .cta{margin-top:auto}
+  .price .cta .btn{width:100%;justify-content:center}
+  .price.featured{
+    background:var(--ink);color:var(--paper);border-color:var(--ink);
+    transform:translateY(-12px);
+  }
+  .price.featured:hover{transform:translateY(-16px)}
+  .price.featured .hd .nm{color:var(--paper)}
+  .price.featured .hd .nm small{color:var(--amber)}
+  .price.featured .pill{background:var(--amber);color:var(--ink);font-weight:600}
+  .price.featured .pr{border-bottom-color:#ffffff20}
+  .price.featured .pr .v{color:var(--paper)}
+  .price.featured .pr .u{color:#cfd7e7}
+  .price.featured li{color:#dfe5f2}
+  .price.featured li::before{border-color:var(--amber)}
+  .price.featured .btn-primary{background:var(--amber);color:var(--ink)}
+  .price.featured .btn-primary:hover{background:var(--paper);color:var(--ink)}
+  .price.featured::before{
+    content:"Le plus choisi";
+    position:absolute;top:-13px;left:50%;transform:translateX(-50%);
+    background:var(--amber);color:var(--ink);
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;
+    padding:6px 14px;border-radius:999px;white-space:nowrap;
+  }
+
+  .price-foot{
+    margin-top:26px;text-align:center;
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+  }
+
+  /* ============================================================
+     SECTION 09 — FAQ
+     ============================================================ */
+  .faq{
+    border-top:1px solid var(--rule-strong);
+  }
+  .faq details{
+    border-bottom:1px solid var(--rule);
+    padding:24px 0;
+    transition:padding .25s ease;
+  }
+  .faq details[open]{padding:30px 0}
+  .faq summary{
+    list-style:none;cursor:pointer;
+    display:grid;grid-template-columns:60px 1fr auto;gap:24px;align-items:center;
+  }
+  .faq summary::-webkit-details-marker{display:none}
+  .faq .qn{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;color:var(--ink-3)}
+  .faq .qt{
+    font-family:'Fraunces',serif;font-weight:400;font-size:clamp(20px,2.2vw,26px);line-height:1.2;color:var(--ink);
+    letter-spacing:-.01em;
+  }
+  .faq summary .ic{
+    width:34px;height:34px;border-radius:999px;border:1px solid var(--ink-2);
+    display:grid;place-items:center;color:var(--ink);
+    transition:transform .35s ease, background .35s ease, color .35s ease;
+    font-size:18px;
+  }
+  .faq details[open] summary .ic{
+    transform:rotate(135deg);background:var(--ink);color:var(--paper);
+  }
+  .faq .ans{
+    margin:18px 0 0 84px;
+    max-width:760px;
+    color:var(--ink-2);font-size:15px;line-height:1.6;
+  }
+  .faq .ans strong{color:var(--ink);font-weight:600}
+  @media(max-width:680px){
+    .faq summary{grid-template-columns:auto 1fr auto;gap:14px}
+    .faq .ans{margin-left:0}
+  }
+
+  /* ============================================================
+     CTA
+     ============================================================ */
+  .cta-block{
+    background:var(--paper);
+    border-top:1px solid var(--rule-strong);
+    padding:clamp(70px,9vw,120px) 0;
+    position:relative;
+  }
+  .cta-card{
+    position:relative;
+    border:1px solid var(--rule-strong);
+    border-radius:24px;
+    background:#fff;
+    padding:clamp(40px,5vw,72px);
+    display:grid;grid-template-columns:1.4fr .8fr;gap:40px;align-items:center;
+    overflow:hidden;
+  }
+  @media(max-width:880px){.cta-card{grid-template-columns:1fr}}
+  .cta-card::before{
+    content:"";position:absolute;inset:0;
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:48px 48px;
+    mask-image:radial-gradient(circle at 90% 10%, #000, transparent 60%);
+    pointer-events:none;opacity:.7;
+  }
+  .cta-h{
+    font-family:'Fraunces',serif;font-weight:340;
+    font-size:clamp(34px,4.6vw,58px);line-height:1.02;color:var(--ink);
+    letter-spacing:-.018em;position:relative;
+  }
+  .cta-h .em{font-style:italic;color:var(--blue-deep);font-weight:380}
+  .cta-h .acc{position:relative;display:inline-block}
+  .cta-h .acc::after{content:"";position:absolute;left:0;right:0;bottom:.05em;height:6px;background:var(--amber);opacity:.85;z-index:-1;border-radius:2px}
+  .cta-card p{margin-top:18px;font-size:16px;color:var(--ink-2);max-width:480px}
+  .cta-actions{display:flex;flex-direction:column;gap:14px;position:relative;z-index:2}
+  .cta-actions .btn{justify-content:center;width:100%}
+  .cta-actions .note{
+    text-align:center;
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+  }
+
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+  footer{
+    border-top:1px solid var(--rule);
+    padding:60px 0 28px;
+    background:var(--paper-2);
+    position:relative;z-index:2;
+  }
+  .ft-grid{
+    display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;
+  }
+  @media(max-width:880px){.ft-grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:560px){.ft-grid{grid-template-columns:1fr}}
+  .ft-brand .brand{font-size:30px}
+  .ft-brand p{margin-top:14px;font-size:14px;color:var(--ink-2);max-width:340px;line-height:1.55}
+  .ft-col h5{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
+  .ft-col ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+  .ft-col a{font-size:14px;color:var(--ink-2);transition:color .25s ease}
+  .ft-col a:hover{color:var(--amber-deep)}
+  .ft-base{
+    margin-top:48px;padding-top:24px;border-top:1px solid var(--rule);
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);
+  }
+
+  /* —— Reveal on scroll —— */
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .9s ease, transform .9s ease}
+  .reveal.in{opacity:1;transform:translateY(0)}
+
+  /* Hero entrance stagger */
+  .hero-stagger > *{opacity:0;transform:translateY(18px);animation:rise .9s ease forwards}
+  .hero-stagger > *:nth-child(1){animation-delay:.05s}
+  .hero-stagger > *:nth-child(2){animation-delay:.18s}
+  .hero-stagger > *:nth-child(3){animation-delay:.32s}
+  .hero-stagger > *:nth-child(4){animation-delay:.46s}
+  .hero-stagger > *:nth-child(5){animation-delay:.6s}
+  .phone-stage{opacity:0;animation:rise 1s ease .55s forwards}
+  @keyframes rise{to{opacity:1;transform:translateY(0)}}
+
+</style>
+</head>
+<body>
+
+<!-- corner ticks -->
+<i class="corner tl"></i>
+<i class="corner tr"></i>
+<i class="corner bl"></i>
+<i class="corner br"></i>
+
+<!-- ============================================================
+     NAV
+============================================================ -->
+<nav class="top">
+  <div class="container">
+    <div class="row">
+      <a href="#" class="brand"><span class="pt1">Archi</span><span class="pt2">Note</span></a>
+      <div class="nav-links">
+        <a href="#fonctionnalites">Fonctionnalités</a>
+        <a href="#workflow">Workflow</a>
+        <a href="#roi">ROI</a>
+        <a href="#tarifs">Tarifs</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <div class="nav-cta">
+        <a href="#" class="login">Connexion</a>
+        <a href="#tarifs" class="btn btn-primary">Essayer gratuitement <span class="arr">↗</span></a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================================================
+     HERO
+============================================================ -->
+<header class="hero">
+  <div class="grid-bg"></div>
+  <div class="container">
+    <div class="hero-grid">
+
+      <div class="hero-stagger">
+        <div class="hero-eyebrow">
+          <span class="dot"></span>
+          <span>v1.0 · pensé pour les architectes BE / FR</span>
+        </div>
+
+        <h1 class="display">
+          Le rapport de chantier,<br>
+          <span class="em">repensé</span> pour les architectes.
+        </h1>
+
+        <p class="lead">
+          ArchiNote transforme vos visites de chantier en rapports prêts à signer&nbsp;:
+          photos, dictée vocale, structuration par zone, génération automatique du PV
+          de réception. Le terrain reste votre métier — la rédaction devient un détail.
+        </p>
+
+        <div class="hero-cta">
+          <a href="#tarifs" class="btn btn-primary">Tester ArchiNote — 2 projets gratuits <span class="arr">↗</span></a>
+          <a href="#workflow" class="btn btn-ghost">Voir le workflow</a>
+        </div>
+
+        <div class="hero-meta">
+          <div class="item">
+            <span class="num">−97%</span>
+            <span class="lbl">Temps de rédaction / rapport</span>
+          </div>
+          <div class="item">
+            <span class="num">1 160h</span>
+            <span class="lbl">Sauvées par cabinet / an</span>
+          </div>
+          <div class="item">
+            <span class="num">×3</span>
+            <span class="lbl">Plus défendable juridiquement</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="phone-stage">
+        <span class="annot a1">A — Capture multimodale</span>
+        <span class="annot right a2">B — IA structurante</span>
+        <span class="annot a3">C — Export PDF</span>
+
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="ph-status">
+              <span>9:41</span>
+              <span class="right">5G <span class="bar"></span></span>
+            </div>
+            <div class="ph-app">
+              <div class="ph-head">
+                <div class="back">←</div>
+                <div class="menu"><span></span><span></span><span></span></div>
+              </div>
+
+              <div class="ph-eyebrow">Visite n°04 · 14 mars</div>
+              <h3 class="ph-title">Maison Lefèvre</h3>
+              <p class="ph-sub">Gros œuvre — Rue de la Paix 12, 1180 Uccle</p>
+
+              <div class="ph-card">
+                <div class="lbl">
+                  <span class="l">Captures · Façade Sud</span>
+                  <span class="r">+ ajouter</span>
+                </div>
+                <div class="row">
+                  <div class="thumb"></div>
+                  <div class="thumb"></div>
+                  <div class="thumb"></div>
+                </div>
+              </div>
+
+              <div class="ph-voice">
+                <div class="h">
+                  <div class="ai">AI</div>
+                  <div class="t">Note vocale transcrite</div>
+                  <div class="badge">2 min 14</div>
+                </div>
+                <div class="wave">
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                </div>
+                <p class="quote">« Fissure de retrait sur l'enduit Sud, ~80 cm, à reprendre par l'entreprise Dupont avant la prochaine visite… »</p>
+              </div>
+
+              <div class="ph-foot">
+                <div class="l">
+                  <small>Rapport prêt</small>
+                  <span>14 observations · 3 zones</span>
+                </div>
+                <span class="gen">Générer ↗</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="hero-cue">
+      <span>SCROLL</span>
+      <span class="l"></span>
+      <span>01 / 08</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============================================================
+     STRIP
+============================================================ -->
+<div class="strip">
+  <div class="strip-inner">
+    <span>Rapports de visite</span>
+    <span>PV de réception provisoire</span>
+    <span>PV de réception définitive</span>
+    <span>Carnet de chantier</span>
+    <span>Constats de désordres</span>
+    <span>Photos horodatées</span>
+    <span>Conformité RGPD</span>
+    <span>Rapports de visite</span>
+    <span>PV de réception provisoire</span>
+    <span>PV de réception définitive</span>
+    <span>Carnet de chantier</span>
+    <span>Constats de désordres</span>
+    <span>Photos horodatées</span>
+    <span>Conformité RGPD</span>
+  </div>
+</div>
+
+<!-- ============================================================
+     SECTION 02 — POURQUOI CHANGER
+============================================================ -->
+<section class="block" id="pourquoi">
+  <div class="container">
+    <div class="sec-head reveal">
+      <div>
+        <div class="sec-num">02 / Pourquoi changer</div>
+      </div>
+      <div>
+        <h2 class="sec-h">
+          30 ans avec Word.<br>
+          <span class="em">C'est 30 ans de</span> <span class="acc">trop.</span>
+        </h2>
+        <p class="sec-intro">
+          Vos rapports actuels ne sont pas seulement chronophages. Ils sont fragiles
+          juridiquement, illisibles à l'échelle d'un cabinet, impossibles à exploiter.
+          ArchiNote résout les quatre angles morts du rapport en .docx.
+        </p>
+      </div>
+    </div>
+
+    <div class="why-grid reveal">
+      <div class="why">
+        <div class="n"><span>01 — Horodatage</span><span class="resolved">Résolu</span></div>
+        <div class="ico">i</div>
+        <h3>Pas d'horodatage fiable</h3>
+        <p>Un rapport rédigé le jour même de la visite est <strong>3× plus défendable</strong> en cas de litige. ArchiNote scelle automatiquement la date, le lieu et l'auteur de chaque constat.</p>
+      </div>
+      <div class="why">
+        <div class="n"><span>02 — Structuration</span><span class="resolved">Résolu</span></div>
+        <div class="ico">¶</div>
+        <h3>Données non structurées</h3>
+        <p>Impossible d'exploiter un Word à l'échelle d'un cabinet. ArchiNote organise chaque observation par chantier, zone et corps d'état — pour vous, et pour vos équipes.</p>
+      </div>
+      <div class="why">
+        <div class="n"><span>03 — Versions</span><span class="resolved">Résolu</span></div>
+        <div class="ico">v</div>
+        <h3>Pas de versionning clair</h3>
+        <p>Conformité RGPD, traçabilité, responsabilité. Chaque rapport possède son historique signé, ses pièces jointes et ses signataires identifiés.</p>
+      </div>
+      <div class="why">
+        <div class="n"><span>04 — Workflow</span><span class="resolved">Résolu</span></div>
+        <div class="ico">⇋</div>
+        <h3>Coupé du reste du workflow</h3>
+        <p>Word vit en silo. ArchiNote s'intègre à votre quotidien&nbsp;: export PDF, partage maître d'ouvrage, archivage centralisé, accès équipe.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 03 — FONCTIONNALITÉS
+============================================================ -->
+<section class="block" id="fonctionnalites" style="padding-top:0">
+  <div class="container">
+    <div class="sec-head reveal">
+      <div><div class="sec-num">03 / Fonctionnalités</div></div>
+      <div>
+        <h2 class="sec-h">
+          Cinq modules.<br>
+          Un seul outil <span class="em acc">de bout en bout.</span>
+        </h2>
+        <p class="sec-intro">
+          De l'ouverture du chantier à l'export du PV, ArchiNote couvre tout le cycle
+          documentaire de vos visites — sans changer d'application.
+        </p>
+      </div>
+    </div>
+
+    <div class="feat-grid reveal">
+
+      <!-- F1 — Chantiers -->
+      <div class="feat feat-1">
+        <div class="lbl">
+          <span class="num">M01</span>
+          <span class="tag">Pilotage</span>
+        </div>
+        <h3>Gestion des chantiers</h3>
+        <p>Toutes les infos liées à votre chantier dans une seule fiche&nbsp;: contacts, lots, historique de visites. Archivez en un geste les chantiers terminés, sans rien perdre.</p>
+        <div class="vis">
+          <div class="vis-list">
+            <div class="it">
+              <span class="pin"></span>
+              <span class="nm">Maison Lefèvre <small>Uccle · gros œuvre</small></span>
+              <span class="st">Actif</span>
+            </div>
+            <div class="it ok">
+              <span class="pin"></span>
+              <span class="nm">Loft Dansaert <small>Bruxelles · finitions</small></span>
+              <span class="st">En cours</span>
+            </div>
+            <div class="it archive">
+              <span class="pin"></span>
+              <span class="nm">Bureau Sablons <small>Bruxelles · livré</small></span>
+              <span class="st">Archivé</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- F2 — Capture -->
+      <div class="feat feat-2">
+        <div class="lbl">
+          <span class="num">M02</span>
+          <span class="tag">Terrain</span>
+        </div>
+        <h3>Capture multimodale par visite</h3>
+        <p>Photos haute résolution, notes vocales, annotations textuelles — chaque observation est rattachée à une zone du chantier. Une visite se clôture en un tap, signature à l'appui.</p>
+        <div class="vis">
+          <div class="vis-cap">
+            <div class="ph2"><span class="badge">Façade Sud</span></div>
+            <div class="ph2"><span class="badge">Toiture</span></div>
+            <div class="ph2"><span class="badge">Cuisine</span></div>
+            <div class="ph2"><span class="badge">Salle d'eau</span></div>
+            <div class="ph2"><span class="badge">Cave</span></div>
+            <div class="ph2"><span class="badge">Extérieur</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- F3 — IA -->
+      <div class="feat feat-3">
+        <div class="lbl">
+          <span class="num">M03</span>
+          <span class="tag">Intelligence</span>
+        </div>
+        <h3>Assistant IA structurant</h3>
+        <p>L'IA transcrit vos notes vocales, regroupe les observations par lot, reformule au registre professionnel et propose une structure de rapport — toujours validable, modifiable.</p>
+        <div class="vis">
+          <div class="vis-ai">
+            <div class="head">
+              <div class="ai">AI</div>
+              <span>Synthèse · zone façade</span>
+            </div>
+            <div class="l">3 photos · 2 notes · 1 vocal</div>
+            <p class="out">« Fissure de retrait, façade Sud, ~80 cm. Reprise à prévoir par l'entreprise de gros œuvre avant la visite du 28/03. »</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- F4 — Génération -->
+      <div class="feat feat-4">
+        <div class="lbl">
+          <span class="num">M04</span>
+          <span class="tag">Document</span>
+        </div>
+        <h3>Génération de rapport</h3>
+        <p>Choisissez le type — rapport de visite, PV provisoire, PV définitif, constat. Aperçu instantané, modifications libres avant export.</p>
+        <div class="vis">
+          <div class="vis-doc">
+            <h5>PV de réception provisoire</h5>
+            <div class="h"></div>
+            <div class="l m"></div>
+            <div class="l"></div>
+            <div class="l s"></div>
+            <div class="h"></div>
+            <div class="l"></div>
+            <div class="l m"></div>
+            <div class="l s"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- F5 — Export -->
+      <div class="feat feat-5">
+        <div class="lbl">
+          <span class="num">M05</span>
+          <span class="tag">Diffusion</span>
+        </div>
+        <h3>Export PDF & partage</h3>
+        <p>Téléchargez en PDF haute fidélité ou partagez un lien sécurisé au maître d'ouvrage et aux entreprises. Archivage automatique côté cabinet.</p>
+        <div class="vis">
+          <div class="vis-share">
+            <div class="it"><span class="icn">PDF</span> Télécharger en PDF <span class="arr">↗</span></div>
+            <div class="it"><span class="icn">↗</span> Partager au MO <span class="arr">↗</span></div>
+            <div class="it"><span class="icn">⌧</span> Archiver dans le dossier <span class="arr">↗</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 04 — WORKFLOW
+============================================================ -->
+<section class="block" id="workflow" style="padding-top:0">
+  <div class="container">
+    <div class="sec-head reveal">
+      <div><div class="sec-num">04 / Logigramme</div></div>
+      <div>
+        <h2 class="sec-h">
+          De la visite au rapport <span class="em">signé</span>,<br>
+          en <span class="acc">cinq gestes.</span>
+        </h2>
+        <p class="sec-intro">
+          Pas de formation, pas de paramétrage interminable. ArchiNote se cale sur la
+          chronologie naturelle de votre métier d'architecte.
+        </p>
+      </div>
+    </div>
+
+    <div class="flow reveal">
+      <div class="step">
+        <div class="stnum">Étape 01</div>
+        <div class="ico">i</div>
+        <h4>Créer le chantier</h4>
+        <p>Adresse, MO, entreprises, lots. Une fiche, prête en moins d'une minute.</p>
+        <div class="arr">→</div>
+      </div>
+      <div class="step">
+        <div class="stnum">Étape 02</div>
+        <div class="ico">ii</div>
+        <h4>Ouvrir une visite</h4>
+        <p>Date, météo, présents. Le contexte est figé — vous n'y pensez plus.</p>
+        <div class="arr">→</div>
+      </div>
+      <div class="step">
+        <div class="stnum">Étape 03</div>
+        <div class="ico">iii</div>
+        <h4>Capturer terrain</h4>
+        <p>Photos, dictée vocale, notes texte. Chaque élément géolocalisé par zone.</p>
+        <div class="arr">→</div>
+      </div>
+      <div class="step">
+        <div class="stnum">Étape 04</div>
+        <div class="ico">iv</div>
+        <h4>L'IA structure</h4>
+        <p>Transcription, regroupement, reformulation. Vous relisez, vous validez.</p>
+        <div class="arr">→</div>
+      </div>
+      <div class="step">
+        <div class="stnum">Étape 05</div>
+        <div class="ico">v</div>
+        <h4>Exporter le PDF</h4>
+        <p>Rapport prêt à signer, partage sécurisé, archivage automatique.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 05 — ROI
+============================================================ -->
+<section class="block" id="roi" style="padding-top:0">
+  <div class="container">
+    <div class="reveal">
+      <div class="roi-wrap">
+        <div class="roi-grid">
+          <div>
+            <div class="roi-eyebrow">05 / Retour sur investissement · cabinet de 5 architectes</div>
+            <h2 class="roi-h">
+              <span class="em">1 160 heures</span><br>
+              que vous récupérez<br>
+              chaque année.
+            </h2>
+            <p class="roi-p">
+              Sur une activité moyenne de 40 projets et 1 200 visites par an, le temps
+              de rédaction passe de <strong style="color:#fff">1 200&nbsp;h</strong> à seulement
+              <strong style="color:#fff">40&nbsp;h</strong>. À 80&nbsp;€/h facturés, ce sont
+              92 800&nbsp;€ de capacité libérée — soit <strong style="color:#fff">+1 projet
+              par mois</strong> sans embaucher.
+            </p>
+          </div>
+
+          <div class="roi-stats">
+            <div class="roi-stat">
+              <span class="v">1 200<span class="u">h</span></span>
+              <span class="l">Avant — rédaction Word</span>
+            </div>
+            <div class="roi-stat hl">
+              <span class="v">40<span class="u">h</span></span>
+              <span class="l">Avec ArchiNote</span>
+            </div>
+            <div class="roi-stat">
+              <span class="v">−97<span class="u">%</span></span>
+              <span class="l">Temps par rapport</span>
+            </div>
+            <div class="roi-stat hl">
+              <span class="v">+12<span class="u">k€</span></span>
+              <span class="l">Marge mensuelle libérée</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="roi-foot">
+          <span>Hypothèses · 5 architectes · 100 k€ rev/architecte · 40 projets/an · 30 min/rapport vs 60 min/rapport vs Word</span>
+          <a href="#tarifs" style="color:var(--amber)">Calculer le ROI de mon cabinet ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 06 — TESTIMONIALS
+============================================================ -->
+<section class="block" id="confiance" style="padding-top:0">
+  <div class="container">
+    <div class="sec-head reveal">
+      <div><div class="sec-num">06 / Confiance</div></div>
+      <div>
+        <h2 class="sec-h">
+          Ce que disent <span class="em">les premiers</span> architectes du <span class="acc">programme.</span>
+        </h2>
+      </div>
+    </div>
+
+    <div class="quotes reveal">
+      <div class="q">
+        <div class="mk">"</div>
+        <blockquote>« Ma première visite avec ArchiNote, j'ai rendu le rapport au MO le soir même. Avant, c'était trois jours. C'est ce moment-là qui m'a convaincu. »</blockquote>
+        <div class="who">
+          <div class="av">CL</div>
+          <div>
+            <div class="nm">Camille Leclerc</div>
+            <div class="ttl">Architecte indépendante · Bruxelles</div>
+          </div>
+        </div>
+      </div>
+      <div class="q">
+        <div class="mk">"</div>
+        <blockquote>« On a quatre architectes sur le terrain en permanence. Centraliser leurs constats sans qu'ils tapent un mot, c'est exactement ce qui nous manquait. »</blockquote>
+        <div class="who">
+          <div class="av">MV</div>
+          <div>
+            <div class="nm">Mathieu Vandenberghe</div>
+            <div class="ttl">Associé · Atelier Tessera</div>
+          </div>
+        </div>
+      </div>
+      <div class="q">
+        <div class="mk">"</div>
+        <blockquote>« Le PV de réception au format légal belge, généré en 30 secondes, signé sur place. C'est le détail qui nous a fait changer. »</blockquote>
+        <div class="who">
+          <div class="av">SD</div>
+          <div>
+            <div class="nm">Sophie Dujardin</div>
+            <div class="ttl">Architecte · cabinet Dujardin & Fils</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 07 — PRICING
+============================================================ -->
+<section class="block" id="tarifs" style="padding-top:0">
+  <div class="container">
+    <div class="sec-head reveal">
+      <div><div class="sec-num">07 / Tarifs</div></div>
+      <div>
+        <h2 class="sec-h">
+          Trois formules.<br>
+          <span class="em">Aucun</span> engagement <span class="acc">caché.</span>
+        </h2>
+        <p class="sec-intro">
+          Commencez gratuitement, passez au format flexible quand vous êtes prêt,
+          basculez en cabinet dès que vous franchissez les dix utilisateurs.
+        </p>
+      </div>
+    </div>
+
+    <div class="price-grid reveal">
+
+      <!-- FREE -->
+      <article class="price">
+        <div class="hd">
+          <div class="nm">Free<small>Pour découvrir</small></div>
+          <span class="pill">Pour démarrer</span>
+        </div>
+        <div class="pr">
+          <span class="v">0&nbsp;€</span>
+          <span class="u">/ utilisateur · mois</span>
+        </div>
+        <ul>
+          <li>Jusqu'à <strong>2 projets actifs</strong></li>
+          <li>Capture photos, notes, vocal</li>
+          <li>Assistant IA — quota mensuel limité</li>
+          <li>Génération de rapport (5 / mois)</li>
+          <li>Export PDF avec filigrane discret</li>
+        </ul>
+        <div class="cta"><a href="#" class="btn btn-ghost">Commencer gratuitement →</a></div>
+      </article>
+
+      <!-- FLEXIBLE -->
+      <article class="price featured">
+        <div class="hd">
+          <div class="nm">Flexible<small>Pour l'architecte indépendant</small></div>
+          <span class="pill">Le standard</span>
+        </div>
+        <div class="pr">
+          <span class="v">19&nbsp;€</span>
+          <span class="u">/ utilisateur · mois</span>
+        </div>
+        <ul>
+          <li><strong>Projets illimités</strong></li>
+          <li>IA générative <strong>sans quota</strong></li>
+          <li>Tous types de rapports — PV provisoire &amp; définitif</li>
+          <li>Export PDF haute fidélité, sans filigrane</li>
+          <li>Partage sécurisé MO &amp; entreprises</li>
+          <li>Stockage centralisé &amp; horodatage signé</li>
+        </ul>
+        <div class="cta"><a href="#" class="btn btn-primary">Essayer 14 jours <span class="arr">↗</span></a></div>
+      </article>
+
+      <!-- BUREAU -->
+      <article class="price">
+        <div class="hd">
+          <div class="nm">Bureau<small>Pour les cabinets ≥ 10 architectes</small></div>
+          <span class="pill">Économies cabinet</span>
+        </div>
+        <div class="pr">
+          <span class="v">15&nbsp;€</span>
+          <span class="u">/ utilisateur · mois</span>
+        </div>
+        <ul>
+          <li>Tout du plan <strong>Flexible</strong></li>
+          <li>Espace cabinet partagé &amp; rôles</li>
+          <li>Tableau de bord chantiers consolidé</li>
+          <li>Templates de rapport sur-mesure</li>
+          <li>Conformité RGPD étendue · journal d'audit</li>
+          <li>Support prioritaire dédié</li>
+        </ul>
+        <div class="cta"><a href="#" class="btn btn-ghost">Demander une démo →</a></div>
+      </article>
+    </div>
+
+    <div class="price-foot reveal">— Prix HT · Facturation mensuelle ou annuelle (−2 mois) · Sans engagement —</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 08 — FAQ
+============================================================ -->
+<section class="block" id="faq" style="padding-top:0">
+  <div class="container">
+    <div class="sec-head reveal">
+      <div><div class="sec-num">08 / Objections</div></div>
+      <div>
+        <h2 class="sec-h">
+          Les questions <span class="em">qu'on se pose</span> avant <span class="acc">d'essayer.</span>
+        </h2>
+      </div>
+    </div>
+
+    <div class="faq reveal">
+
+      <details>
+        <summary>
+          <span class="qn">Q.01</span>
+          <span class="qt">Concrètement, où est le ROI ?</span>
+          <span class="ic">+</span>
+        </summary>
+        <div class="ans">
+          Sur un cabinet de 5 architectes générant 1 200 visites par an, le temps de
+          rédaction tombe de <strong>1 200 h à 40 h</strong>. À 80&nbsp;€/h facturés,
+          c'est 92&nbsp;800&nbsp;€ de capacité libérée — l'équivalent d'un projet
+          supplémentaire par mois. L'abonnement Flexible se rentabilise dès la
+          première visite.
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span class="qn">Q.02</span>
+          <span class="qt">Où sont stockées mes données et qui y a accès ?</span>
+          <span class="ic">+</span>
+        </summary>
+        <div class="ans">
+          Vos données sont hébergées dans l'Union européenne, chiffrées au repos et
+          en transit. Vous restez seul propriétaire. Aucun partage tiers, aucune
+          réutilisation pour entraîner nos modèles, conformité RGPD complète et
+          journal d'audit consultable sur les plans Flexible et Bureau.
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span class="qn">Q.03</span>
+          <span class="qt">On fait ça au papier ou Word depuis 30 ans. Pourquoi changer ?</span>
+          <span class="ic">+</span>
+        </summary>
+        <div class="ans">
+          Parce qu'un rapport Word n'a <strong>pas d'horodatage opposable</strong>,
+          n'est pas exploitable à l'échelle d'un cabinet, et sépare votre activité
+          du reste de votre workflow. ArchiNote rend chaque rapport rédigé le jour
+          même — 3× plus défendable juridiquement — et structuré par défaut.
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span class="qn">Q.04</span>
+          <span class="qt">Comment ArchiNote garantit-il la qualité des rapports ?</span>
+          <span class="ic">+</span>
+        </summary>
+        <div class="ans">
+          L'IA propose, vous validez. Chaque section est éditable avant export. Les
+          modèles de PV (provisoire, définitif) suivent les mentions légales
+          belges et françaises, et chaque cabinet peut définir ses propres
+          templates sur le plan Bureau. Vous gardez la main du début à la fin.
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span class="qn">Q.05</span>
+          <span class="qt">Est-ce vraiment adapté aux petits cabinets et aux indépendants ?</span>
+          <span class="ic">+</span>
+        </summary>
+        <div class="ans">
+          C'est notre cœur de cible. Le plan Free vous permet de tester sur deux
+          projets réels, sans carte bancaire. Le plan Flexible se facture à
+          l'utilisateur — vous ne payez que pour vous, ou pour les architectes
+          actifs ce mois-là. Aucun coût fixe, aucun engagement.
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span class="qn">Q.06</span>
+          <span class="qt">Que se passe-t-il si je n'ai pas de réseau sur le chantier ?</span>
+          <span class="ic">+</span>
+        </summary>
+        <div class="ans">
+          La capture terrain (photos, notes, vocal) fonctionne en local. La
+          synchronisation et la génération IA s'effectuent dès que la connexion
+          revient. Le mode hors-ligne complet (PWA) arrive en Phase 2 — déjà sur
+          notre roadmap publique.
+        </div>
+      </details>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     CTA
+============================================================ -->
+<section class="cta-block">
+  <div class="container">
+    <div class="cta-card reveal">
+      <div>
+        <div class="sec-num" style="margin-bottom:18px">09 / Commencer</div>
+        <h2 class="cta-h">
+          Votre prochaine visite,<br>
+          <span class="em">sans le retour</span> au <span class="acc">bureau.</span>
+        </h2>
+        <p>
+          Téléchargez l'application, créez votre premier chantier, et générez
+          votre rapport sur le trajet du retour. Deux projets gratuits, aucune
+          carte bancaire demandée.
+        </p>
+      </div>
+      <div class="cta-actions">
+        <a href="#" class="btn btn-primary">Commencer gratuitement <span class="arr">↗</span></a>
+        <a href="#" class="btn btn-ghost">Réserver une démo</a>
+        <span class="note">— Sans CB · 2 projets gratuits · Setup en 90 sec —</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+============================================================ -->
+<footer>
+  <div class="container">
+    <div class="ft-grid">
+      <div class="ft-brand">
+        <a href="#" class="brand"><span class="pt1">Archi</span><span class="pt2">Note</span></a>
+        <p>Votre outil pour gérer vos visites de chantier de A à Z. Pensé pour les architectes indépendants et les bureaux d'architectes en Belgique et en France.</p>
+      </div>
+      <div class="ft-col">
+        <h5>Produit</h5>
+        <ul>
+          <li><a href="#fonctionnalites">Fonctionnalités</a></li>
+          <li><a href="#workflow">Workflow</a></li>
+          <li><a href="#tarifs">Tarifs</a></li>
+          <li><a href="#">Roadmap</a></li>
+          <li><a href="#">Changelog</a></li>
+        </ul>
+      </div>
+      <div class="ft-col">
+        <h5>Ressources</h5>
+        <ul>
+          <li><a href="#roi">Calculateur ROI</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="#">Modèles de PV</a></li>
+          <li><a href="#">Blog</a></li>
+        </ul>
+      </div>
+      <div class="ft-col">
+        <h5>Cabinet</h5>
+        <ul>
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">Démo cabinet</a></li>
+          <li><a href="#">Mentions légales</a></li>
+          <li><a href="#">RGPD</a></li>
+          <li><a href="#">CGU</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ft-base">
+      <span>© 2026 ArchiNote · Tous droits réservés</span>
+      <span>Conçu en Belgique · Hébergement EU</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Reveal on scroll
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  },{rootMargin:'0px 0px -10% 0px',threshold:0.08});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+
+</body>
+</html>
